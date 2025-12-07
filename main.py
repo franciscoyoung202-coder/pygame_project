@@ -21,11 +21,12 @@ from assets import high_score
 
 pg.init()
 
+
 # timer and font
 timer = pg.time.Clock()
-smol_font = pg.font.Font(game_font, 20)
+smol_font = pg.font.Font(game_font, 15)  # smaller HUD font
+smol_font_back = pg.font.Font(game_font, 8)
 big_font = pg.font.Font(game_font, 54)
-
 
 # screen
 screen = pg.display.set_mode([window_width, window_height])
@@ -53,6 +54,23 @@ best_timed = 0
 # overwrite high scores on high_score.txt
 best_freeplay, best_ammo, best_timed = high_score()
 
+# music
+pg.mixer.init()
+
+pg.mixer.music.load('sounds/intro_music.mp3') # in the main menu
+pg.mixer.music.play(-1)
+
+quack_sound = pg.mixer.Sound("sounds/duck-quack-112941.mp3")
+quack_sound.set_volume(.15)
+
+bird_sound = pg.mixer.Sound("sounds/hit-soundvideo-game-type-230510.mp3")
+bird_sound.set_volume(.15)
+
+gun_sound = pg.mixer.Sound("sounds/gunshot-352466.mp3")
+gun_sound.set_volume(0.35)
+
+
+
 # flags
 shots = False
 menu = True
@@ -61,14 +79,12 @@ pause = False
 clicked = False
 write_values = False
 new_coords = True  # when True, rebuild enemies
+instructions_open = False  # menu overlay
 
-# load images
-menu_img = pg.image.load(f"menus/mainMenu.png")
-pause_img = pg.image.load(f'menus/pause.png')
-game_over_img = pg.image.load('menus/gameOver.png')
 
 # coordinates of enemies 'goals'
 one_coords, two_coords, three_coords = build_coords(goals, window_width)
+
 
 running = True
 while running:
@@ -89,8 +105,9 @@ while running:
 
     # Draw order: clear -> background -> banner
     screen.fill((0,0,0))
-    screen.blit(backgrounds[level - 1], (0, 0))
-    screen.blit(banners[level - 1], (0, 10))
+    if level > 0:
+        screen.blit(backgrounds[level - 1], (0, 0))
+        screen.blit(banners[level - 1], (0, 10))
 
     if menu:
         level = 0
@@ -110,7 +127,8 @@ while running:
             clicked,
             write_values,
             time_remaining,
-            new_coords
+            new_coords,
+            instructions_open
         ) = draw_menu(
             screen,
             best_freeplay,
@@ -128,16 +146,38 @@ while running:
             clicked,
             write_values,
             time_remaining,
-            new_coords
+            new_coords,
+            instructions_open
         )
         # If we just left the menu to start a game, rebuild enemies
         if not menu and level > 0:
             new_coords = True
+            # optional: change to in-game music if you have one
+            try:
+                pg.mixer.music.load('sounds/game_music.mp3')
+                pg.mixer.music.play(-1)
+            except Exception:
+                pass
 
     if game_over:
         level = 0
-        draw_game_over(screen, mode, time_elapsed, points, big_font, clicked,
-                   level, pause, game_over, menu, total_shots, time_remaining, running, mode_freeplay)
+        # CAPTURE returned state so clicks persist
+        (
+            level,
+            pause,
+            game_over,
+            menu,
+            points,
+            total_shots,
+            time_elapsed,
+            time_remaining,
+            clicked,
+            running
+        ) = draw_game_over(
+            screen, mode, time_elapsed, points, big_font, clicked,
+            level, pause, game_over, menu, total_shots, time_remaining, running, mode_freeplay
+        )
+
     if pause:
         if pause:
             (
@@ -168,6 +208,8 @@ while running:
         one_coords, two_coords, three_coords = build_coords(goals, window_width)
         new_coords = False
 
+    # Ensure goal_boxes exists before checks later
+    goal_boxes = [[], [], []]
 
     # Level handling: draw, move, shots
     if not pause:
@@ -175,25 +217,26 @@ while running:
             goal_boxes = draw_level(screen, goals_images, level, one_coords)
             one_coords = move_level(one_coords, window_width)
             if shots:
-                one_coords, points = check_shot(goal_boxes, one_coords, points)
+                one_coords, points = check_shot(goal_boxes, one_coords, points, bird_sound, quack_sound, gun_sound, level)
                 shots = False
         elif level == 2:
             goal_boxes = draw_level(screen, goals_images, level, two_coords)
             two_coords = move_level(two_coords, window_width)
             if shots:
-                two_coords, points = check_shot(goal_boxes, two_coords, points)
+                two_coords, points = check_shot(goal_boxes, two_coords, points, bird_sound, quack_sound, gun_sound, level)
                 shots = False
         elif level == 3:
             goal_boxes = draw_level(screen, goals_images, level, three_coords)
             three_coords = move_level(three_coords, window_width)
             if shots:
-                three_coords, points = check_shot(goal_boxes, three_coords, points)
+                three_coords, points = check_shot(goal_boxes, three_coords, points, bird_sound, quack_sound, gun_sound, level)
                 shots = False
 
     # hud + gun
-    if level > 0:
+    # Hide HUD on pause or game over
+    if level > 0 and not pause and not game_over:
         draw_gun(screen, guns, level, window_width, window_height)
-        draw_score(screen, smol_font, points, total_shots, time_elapsed, mode, ammo, time_remaining)
+        draw_score(screen, smol_font_back, points, total_shots, time_elapsed, mode, ammo, time_remaining)
 
     # Events
     for event in pg.event.get():
@@ -219,7 +262,7 @@ while running:
                         total_shots += 1
                         if mode == mode_accuracy:
                             ammo -= 1  # Count down remaining ammo
-             # pause button area
+            # pause button area
             if (602 < mouse_position[0] < 712) and (530 < mouse_position[1] < 582) and not clicked and level > 0:
                 resume_level = level
                 pause = True
@@ -228,15 +271,21 @@ while running:
             # reset-to-menu area
             if (602 < mouse_position[0] < 712) and (593 < mouse_position[1] < 644) and not pause:
                 menu = True
+                pg.mixer.music.load('sounds/intro_music.mp3')
+                pg.mixer.music.play(-1)
                 clicked = False
                 new_coords = True
+                instructions_open = False  # ensure overlay is closed when returning to menu
 
     # Level progression: advance if all targets are gone
     if level > 0 and not pause:
         if goal_boxes == [[], [], []] and level < 3:
             level += 1
+            new_coords = True
         if level == 3 and goal_boxes == [[],[],[],[]] or (mode == 1 and ammo == 0) or (mode == 2 and time_remaining == 0):
             new_coords = True
+            pg.mixer.music.load('sounds/intro_music.mp3')
+            pg.mixer.music.play(-1)
             if mode == 0:
                 if time_elapsed < best_freeplay or best_freeplay == 0:
                     best_freeplay = time_elapsed
@@ -254,7 +303,6 @@ while running:
     if write_values:
         file = open('high_scores.txt', 'w')
         file.write(f'{best_freeplay}\n{best_ammo}\n{best_timed}')
-        file.close()
         write_values = False
         
     # updates everything

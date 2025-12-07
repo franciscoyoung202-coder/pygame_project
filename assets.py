@@ -27,7 +27,6 @@ def load_assets():
 def high_score():
     file = open('high_scores.txt', 'r')
     read_score = file.readlines()
-    file.close()
     best_freeplay = int(read_score[0])
     best_ammo = int(read_score[1])
     best_timed = int(read_score[2])
