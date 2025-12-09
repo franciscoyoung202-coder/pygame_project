@@ -12,16 +12,21 @@ mode_timed = 2
 def draw_gun(screen, guns, level, window_width, window_height):
     """
     Draw the gun pointing toward the mouse. Fires a colored dot when the left mouse button is held.
+
+    Minimal fix:
+    - Decide flip using the gun pivot (gun_point.x), not the window center.
+    - When aiming straight up (dx == 0), always use the LEFT branch so 90 - 90 = 0 (no 180° flip).
     """
 
     mouse_x, mouse_y = pg.mouse.get_pos()
     gun_point = ((window_width + 120) // 2, window_height - 125)
-    lasers = [(255,0,0), (128,0,128), (0,128,0)]  # color tuples to avoid pygame string color issues
+    lasers = [(255, 0, 0), (128, 0, 128), (0, 128, 0)]
     clicks = pg.mouse.get_pressed()
 
     dx = mouse_x - gun_point[0]
     dy = mouse_y - gun_point[1]
-    # to fix divide by 0
+
+    # Original angle-from-slope logic
     if dx != 0:
         slope = dy / dx
         angle = math.atan(slope)
@@ -33,14 +38,18 @@ def draw_gun(screen, guns, level, window_width, window_height):
 
     rotation = math.degrees(angle)
 
-    # Safe index guards
+    # Safe indexing for the game
     gun_idx = max(0, min(level - 1, len(guns) - 1))
     laser_idx = max(0, min(level - 1, len(lasers) - 1))
 
-    # Flip gun if aiming to the left
-    if mouse_x < window_width / 2:
+    # fix 1: Use the pivot x coord (gun_point[0]) to choose side, not window_width/2
+    # fix 2: for dx == 0 (straight up), make it so that the left side to avoid 180 degrees flip when aiming straight up
+    use_left_branch = dx <= 0  # left if mouse is at or left of pivot; right only if dx > 0
+
+    if use_left_branch:
         gun = pg.transform.flip(guns[gun_idx], True, False)
         if mouse_y < window_height - 200:
+            # For straight up (rotation == 90), this yields 0°, avoiding the 180° jump
             screen.blit(pg.transform.rotate(gun, 90 - rotation), (gun_point[0] - 50, gun_point[1] - 50))
             if clicks[0]:
                 pg.draw.circle(screen, lasers[laser_idx], (mouse_x, mouse_y), 5)
@@ -95,10 +104,10 @@ def draw_score(screen, smol_font_back, points, total_shots, time_elapsed, mode, 
     if mode == mode_freeplay:
         blit_line("Mode: Freeplay", 3)
     elif mode == mode_accuracy:
-        blit_line(f"Ammo Left: {ammo}", 3)
+        blit_line(f"Ammo Left {ammo}", 3)
         blit_line(f"Mode: Accuracy", 4)
     elif mode == mode_timed:
-        blit_line(f"Mode: Timed", 4)
+        blit_line(f"Mode Timed", 4)
         blit_line(f"Time Left: {time_remaining}s", 3)
 
 
@@ -137,8 +146,8 @@ def draw_menu(
     reset_button = pg.Rect((540, 450), (260, 100))
 
     # Text-only buttons: Instructions and Exit (no big rects, just text hitboxes)
-    font_main = pg.font.Font(game_font, 30)
-    font_small = pg.font.Font(game_font, 22)
+    font_main = pg.font.Font(game_font, 23)
+    font_small = pg.font.Font(game_font, 16)
     font_tiny = pg.font.Font(None, 19)  # very small font for rect
 
     instr_label = font_main.render("Instructions", True, dark_color)
@@ -153,9 +162,9 @@ def draw_menu(
 
     # Draw rectangular buttons (original look)
     buttons = [
-        (freeplay_button, "Practice!", f"Best Time: {best_freeplay}"),
-        (timed_button, "Timed", f"Best Score: {best_timed}"),
-        (accuracy_button, "Accuracy", f"Best Score: {best_ammo}"),
+        (freeplay_button, "Practice", f"Best Time {best_freeplay}"),
+        (timed_button, "Timed", f"Best Score {best_timed}"),
+        (accuracy_button, "Accuracy", f"Best Score {best_ammo}"),
         (reset_button, "Reset Scores", "Clear SCORES"),
     ]
 
@@ -230,7 +239,6 @@ def draw_menu(
         if instr_rect.collidepoint(mouse_pos) and mouse_clicks[0] and not clicked:
             instructions_open = True
             clicked = True
-
         if exit_rect.collidepoint(mouse_pos) and mouse_clicks[0] and not clicked:
             clicked = True
             pg.quit()
@@ -273,7 +281,7 @@ def draw_menu(
         c_rect = close_txt.get_rect(center=close_btn.center)
         screen.blit(close_txt, c_rect)
 
-        # Close click
+        # Close click within the instructions button
         if close_btn.collidepoint(mouse_pos) and mouse_clicks[0] and not clicked:
             instructions_open = False
             clicked = True

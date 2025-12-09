@@ -25,9 +25,22 @@ def load_assets():
     return backgrounds, banners, guns, goals_images
 
 def high_score():
+    """read the high scores in the same order thye are written
+    line 1: best_freeplay
+    line 2: best_ammo
+    line 3: best timed
+    
+    returning (best_freeplay, best_ammo, best_timed). 
+    if the file is missing or invalid, default to zeroos
+    only digits are in the file
+    """
+    
     file = open('high_scores.txt', 'r')
-    read_score = file.readlines()
-    best_freeplay = int(read_score[0])
-    best_ammo = int(read_score[1])
-    best_timed = int(read_score[2])
-    return best_ammo, best_timed, best_freeplay
+    lines = file.readlines()
+
+    while len(lines) < 3:
+        lines.append("0")
+    best_freeplay = int(lines[0].strip())
+    best_ammo = int(lines[1].strip())
+    best_timed = int(lines[2].strip())
+    return best_freeplay, best_ammo, best_timed

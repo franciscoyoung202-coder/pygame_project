@@ -155,7 +155,7 @@ def draw_exit_background(screen, mode, mode_freeplay, points, time_elapsed):
 
     mouse_pos = pg.mouse.get_pos()
 
-    for rect, label, lwlabel in buttons:
+    for rect, label, lwlabel in buttons: # this a simplier version because I would add new buttons later (wayne)
         # enlarge
         if rect.collidepoint(mouse_pos):
             enlarge = 1.10
@@ -180,13 +180,13 @@ def draw_exit_background(screen, mode, mode_freeplay, points, time_elapsed):
 
     if mode == mode_freeplay:
         display_score = time_elapsed
-        score_surf = big_font.render(f"HIGH SCORE: {display_score}s", True, light_color)
+        score_surf = big_font.render(f"HIGH SCORE {display_score}s", True, light_color)
         score_rect = score_surf.get_rect(center=(window_width // 2, 350))
         screen.blit(score_surf, score_rect)
     else:
         display_score = points
         # Render the score in black and center it near the top
-        score_surf = big_font.render(f"HIGH SCORE: {display_score} pts", True, light_color)
+        score_surf = big_font.render(f"HIGH SCORE {display_score} pts", True, light_color)
         score_rect = score_surf.get_rect(center=(window_width // 2, 350))
         screen.blit(score_surf, score_rect)
 

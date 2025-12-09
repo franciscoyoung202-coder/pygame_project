@@ -58,16 +58,17 @@ best_freeplay, best_ammo, best_timed = high_score()
 pg.mixer.init()
 
 pg.mixer.music.load('sounds/intro_music.mp3') # in the main menu
+
 pg.mixer.music.play(-1)
 
 quack_sound = pg.mixer.Sound("sounds/duck-quack-112941.mp3")
-quack_sound.set_volume(.15)
+quack_sound.set_volume(.10)
 
 bird_sound = pg.mixer.Sound("sounds/hit-soundvideo-game-type-230510.mp3")
-bird_sound.set_volume(.15)
+bird_sound.set_volume(.10)
 
 gun_sound = pg.mixer.Sound("sounds/gunshot-352466.mp3")
-gun_sound.set_volume(0.35)
+gun_sound.set_volume(0.23)
 
 
 
@@ -152,7 +153,7 @@ while running:
         # If we just left the menu to start a game, rebuild enemies
         if not menu and level > 0:
             new_coords = True
-            # optional: change to in-game music if you have one
+            # changing to in-game music 
             try:
                 pg.mixer.music.load('sounds/game_music.mp3')
                 pg.mixer.music.play(-1)
